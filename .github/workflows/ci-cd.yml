@@ -16,9 +16,9 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
-  # ─────────────────────────────────────────────────
-  # JOB 1: Python Lint & Syntax Check
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
+  # JOB 1: Python Lint and Syntax Check
+  # -----------------------------------------------
   python-checks:
     name: Python Checks
     runs-on: ubuntu-latest
@@ -53,9 +53,9 @@ jobs:
             --extend-ignore=E501,W503 \
             --exclude=__pycache__
 
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
   # JOB 2: Terraform Checks
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
   terraform-checks:
     name: Terraform Checks
     runs-on: ubuntu-latest
@@ -73,7 +73,6 @@ jobs:
         run: |
           cd terraform
           terraform fmt -check -recursive
-        continue-on-error: false
 
       - name: Terraform Init
         run: |
@@ -85,9 +84,9 @@ jobs:
           cd terraform
           terraform validate
 
-  # ─────────────────────────────────────────────────
-  # JOB 3: Terraform Plan (PRs only)
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
+  # JOB 3: Terraform Plan (pull requests only)
+  # -----------------------------------------------
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
@@ -110,9 +109,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init
         run: |
@@ -138,11 +137,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const output = `#### Terraform Plan ���
+            const output = `#### Terraform Plan
             \`\`\`
             ${{ steps.plan.outputs.stdout }}
             \`\`\`
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            *Pushed by: @${{ github.actor }}, Action: ${{ github.event_name }}*`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -150,9 +149,9 @@ jobs:
               body: output
             })
 
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
   # JOB 4: Terraform Apply (main branch only)
-  # ─────────────────────────────────────────────────
+  # -----------------------------------------------
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
@@ -173,9 +172,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init
         run: |
