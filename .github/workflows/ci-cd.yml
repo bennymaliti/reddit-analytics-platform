@@ -1,0 +1,196 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  AWS_REGION: eu-west-2
+  TF_VERSION: 1.6.0
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # JOB 1: Python Lint & Syntax Check
+  # ─────────────────────────────────────────────────
+  python-checks:
+    name: Python Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install black flake8 aws-lambda-powertools boto3
+
+      - name: Check Python syntax
+        run: |
+          for f in src/lambdas/*/handler.py; do
+            python -m py_compile "$f" && echo "OK: $f" || exit 1
+          done
+
+      - name: Black formatting check
+        run: |
+          black src/lambdas/ --check --line-length 100
+
+      - name: Flake8 lint
+        run: |
+          flake8 src/lambdas/ \
+            --max-line-length 100 \
+            --extend-ignore=E501,W503 \
+            --exclude=__pycache__
+
+  # ─────────────────────────────────────────────────
+  # JOB 2: Terraform Checks
+  # ─────────────────────────────────────────────────
+  terraform-checks:
+    name: Terraform Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          cd terraform
+          terraform fmt -check -recursive
+        continue-on-error: false
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init -backend=false
+
+      - name: Terraform Validate
+        run: |
+          cd terraform
+          terraform validate
+
+  # ─────────────────────────────────────────────────
+  # JOB 3: Terraform Plan (PRs only)
+  # ─────────────────────────────────────────────────
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [python-checks, terraform-checks]
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init \
+            -backend-config="bucket=reddit-analytics-tfstate-919399847940" \
+            -backend-config="key=reddit-analytics/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=terraform-state-lock" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          cd terraform
+          terraform plan \
+            -var-file="environments/prod/terraform.tfvars" \
+            -no-color \
+            -out=tfplan
+        continue-on-error: true
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Terraform Plan ���
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  # ─────────────────────────────────────────────────
+  # JOB 4: Terraform Apply (main branch only)
+  # ─────────────────────────────────────────────────
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: [python-checks, terraform-checks]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init \
+            -backend-config="bucket=reddit-analytics-tfstate-919399847940" \
+            -backend-config="key=reddit-analytics/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=terraform-state-lock" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply \
+            -var-file="environments/prod/terraform.tfvars" \
+            -auto-approve \
+            -no-color
