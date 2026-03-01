@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -24,6 +26,11 @@ data "aws_iam_policy_document" "base" {
     actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
     resources = [var.kms_key_arn]
   }
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = ["arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.name_prefix}-*"]
+  }
 }
 
 resource "aws_iam_policy" "base" {
@@ -31,7 +38,7 @@ resource "aws_iam_policy" "base" {
   policy = data.aws_iam_policy_document.base.json
 }
 
-# ─── Ingestion Role ───
+# --- Ingestion Role ---
 resource "aws_iam_role" "ingestion" {
   name               = "${var.name_prefix}-ingestion"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
@@ -72,7 +79,7 @@ resource "aws_iam_role_policy" "ingestion" {
   })
 }
 
-# ─── Sentiment Role ───
+# --- Sentiment Role ---
 resource "aws_iam_role" "sentiment" {
   name               = "${var.name_prefix}-sentiment"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
@@ -90,25 +97,38 @@ resource "aws_iam_role_policy" "sentiment" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["kinesis:GetRecords", "kinesis:GetShardIterator", "kinesis:DescribeStream", "kinesis:ListShards"]
+        Effect = "Allow"
+        Action = [
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:DescribeStream",
+          "kinesis:ListShards"
+        ]
         Resource = [var.kinesis_raw_stream_arn]
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:BatchWriteItem"]
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem"
+        ]
         Resource = var.dynamodb_table_arns
       },
       {
-        Effect   = "Allow"
-        Action   = ["comprehend:DetectSentiment", "comprehend:BatchDetectSentiment", "comprehend:DetectKeyPhrases"]
+        Effect = "Allow"
+        Action = [
+          "comprehend:DetectSentiment",
+          "comprehend:BatchDetectSentiment",
+          "comprehend:DetectKeyPhrases"
+        ]
         Resource = ["*"]
       },
     ]
   })
 }
 
-# ─── Trending Role ───
+# --- Trending Role ---
 resource "aws_iam_role" "trending" {
   name               = "${var.name_prefix}-trending"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
@@ -126,13 +146,23 @@ resource "aws_iam_role_policy" "trending" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["kinesis:GetRecords", "kinesis:GetShardIterator", "kinesis:DescribeStream", "kinesis:ListShards"]
+        Effect = "Allow"
+        Action = [
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:DescribeStream",
+          "kinesis:ListShards"
+        ]
         Resource = [var.kinesis_raw_stream_arn]
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:GetItem", "dynamodb:Query"]
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query"
+        ]
         Resource = var.dynamodb_table_arns
       },
       {
@@ -149,7 +179,7 @@ resource "aws_iam_role_policy" "trending" {
   })
 }
 
-# ─── Consumer Roles ───
+# --- Consumer Roles (engagement, classification, author-profiling) ---
 resource "aws_iam_role" "consumer" {
   for_each           = toset(["engagement", "classification", "author-profiling"])
   name               = "${var.name_prefix}-${each.key}"
@@ -170,13 +200,23 @@ resource "aws_iam_role_policy" "consumer" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["kinesis:GetRecords", "kinesis:GetShardIterator", "kinesis:DescribeStream", "kinesis:ListShards"]
+        Effect = "Allow"
+        Action = [
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:DescribeStream",
+          "kinesis:ListShards"
+        ]
         Resource = [var.kinesis_raw_stream_arn]
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:GetItem", "dynamodb:Query"]
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query"
+        ]
         Resource = var.dynamodb_table_arns
       },
       {
@@ -188,7 +228,7 @@ resource "aws_iam_role_policy" "consumer" {
   })
 }
 
-# ─── Analytics API Role ───
+# --- Analytics API Role ---
 resource "aws_iam_role" "analytics_api" {
   name               = "${var.name_prefix}-analytics-api"
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
