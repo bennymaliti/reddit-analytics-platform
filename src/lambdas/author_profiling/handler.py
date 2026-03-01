@@ -3,6 +3,7 @@ Lambda: author-profiling
 Trigger: Kinesis raw-posts stream
 Purpose: Build and update rolling author behavioural profiles
 """
+
 import base64
 import json
 import os
@@ -60,13 +61,13 @@ def lambda_handler(event: dict, context) -> dict:
                     "active_subreddits = list_append(if_not_exists(active_subreddits, :empty), :sub)"
                 ),
                 ExpressionAttributeValues={
-                    ":one":      1,
-                    ":score":    post.get("score", 0),
+                    ":one": 1,
+                    ":score": post.get("score", 0),
                     ":comments": post.get("num_comments", 0),
-                    ":now":      datetime.now(timezone.utc).isoformat(),
-                    ":sub":      [post.get("subreddit_id", "")],
-                    ":empty":    [],
-                }
+                    ":now": datetime.now(timezone.utc).isoformat(),
+                    ":sub": [post.get("subreddit_id", "")],
+                    ":empty": [],
+                },
             )
             processed += 1
         except Exception as e:

@@ -3,6 +3,7 @@ Lambda: content-classification
 Trigger: Kinesis raw-posts stream
 Purpose: Classify posts by content type and topic category
 """
+
 import base64
 import json
 import os
@@ -21,10 +22,10 @@ RAW_POSTS_TABLE = os.environ["DYNAMODB_RAW_POSTS"]
 
 TOPIC_KEYWORDS = {
     "technology": ["ai", "machine learning", "software", "hardware", "cloud", "aws", "python"],
-    "finance":    ["stock", "market", "investment", "crypto", "bitcoin", "economy"],
-    "science":    ["research", "study", "discovery", "climate", "space", "biology"],
-    "politics":   ["government", "election", "policy", "senate", "president"],
-    "gaming":     ["game", "gaming", "xbox", "playstation", "nintendo", "steam"],
+    "finance": ["stock", "market", "investment", "crypto", "bitcoin", "economy"],
+    "science": ["research", "study", "discovery", "climate", "space", "biology"],
+    "politics": ["government", "election", "policy", "senate", "president"],
+    "gaming": ["game", "gaming", "xbox", "playstation", "nintendo", "steam"],
 }
 
 
@@ -45,8 +46,9 @@ def classify_post_type(post: dict) -> str:
 
 def classify_topic(title: str, body: str) -> str:
     text = f"{title} {body}".lower()
-    scores = {topic: sum(1 for kw in keywords if kw in text)
-              for topic, keywords in TOPIC_KEYWORDS.items()}
+    scores = {
+        topic: sum(1 for kw in keywords if kw in text) for topic, keywords in TOPIC_KEYWORDS.items()
+    }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "general"
 
@@ -80,13 +82,13 @@ def lambda_handler(event: dict, context) -> dict:
             table.update_item(
                 Key={"post_id": post["post_id"], "ingested_at": post["ingested_at"]},
                 UpdateExpression="SET post_type = :pt, topic_category = :tc, "
-                                 "entities = :e, classified_at = :ca",
+                "entities = :e, classified_at = :ca",
                 ExpressionAttributeValues={
                     ":pt": post_type,
                     ":tc": topic,
-                    ":e":  entities,
+                    ":e": entities,
                     ":ca": datetime.now(timezone.utc).isoformat(),
-                }
+                },
             )
             processed += 1
         except Exception as e:

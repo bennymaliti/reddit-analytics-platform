@@ -3,6 +3,7 @@ Lambda: sentiment-analysis
 Trigger: Kinesis raw-posts stream
 Purpose: Run NLP sentiment analysis via Amazon Comprehend
 """
+
 import base64
 import json
 import os
@@ -29,10 +30,9 @@ def decode_kinesis_record(record: dict) -> dict:
 def analyse_sentiment_batch(texts: list) -> list:
     results = []
     for i in range(0, len(texts), MAX_BATCH_SIZE):
-        batch = texts[i:i + MAX_BATCH_SIZE]
+        batch = texts[i : i + MAX_BATCH_SIZE]
         response = comprehend.batch_detect_sentiment(
-            TextList=[t[:4900] for t in batch],
-            LanguageCode="en"
+            TextList=[t[:4900] for t in batch], LanguageCode="en"
         )
         results.extend(response["ResultList"])
     return results
@@ -54,17 +54,19 @@ def lambda_handler(event: dict, context) -> dict:
         for post, sentiment in zip(posts, sentiment_results):
             try:
                 scores = sentiment.get("SentimentScore", {})
-                batch.put_item(Item={
-                    "post_id": post["post_id"],
-                    "analyzed_at": datetime.now(timezone.utc).isoformat(),
-                    "sentiment": sentiment.get("Sentiment", "NEUTRAL"),
-                    "positive_score": str(round(scores.get("Positive", 0), 4)),
-                    "negative_score": str(round(scores.get("Negative", 0), 4)),
-                    "neutral_score":  str(round(scores.get("Neutral",  0), 4)),
-                    "mixed_score":    str(round(scores.get("Mixed",    0), 4)),
-                    "subreddit": post.get("subreddit_id", ""),
-                    "title": post.get("title", "")[:500],
-                })
+                batch.put_item(
+                    Item={
+                        "post_id": post["post_id"],
+                        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                        "sentiment": sentiment.get("Sentiment", "NEUTRAL"),
+                        "positive_score": str(round(scores.get("Positive", 0), 4)),
+                        "negative_score": str(round(scores.get("Negative", 0), 4)),
+                        "neutral_score": str(round(scores.get("Neutral", 0), 4)),
+                        "mixed_score": str(round(scores.get("Mixed", 0), 4)),
+                        "subreddit": post.get("subreddit_id", ""),
+                        "title": post.get("title", "")[:500],
+                    }
+                )
                 processed += 1
             except Exception as e:
                 logger.error(f"Error storing sentiment for {post.get('post_id')}: {e}")

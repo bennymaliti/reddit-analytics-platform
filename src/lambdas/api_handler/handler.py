@@ -3,6 +3,7 @@ Lambda: api-handler
 Trigger: API Gateway REST
 Purpose: Unified query layer for all analytics data
 """
+
 import json
 import os
 import boto3
@@ -19,11 +20,11 @@ app = APIGatewayRestResolver()
 dynamodb = boto3.resource("dynamodb")
 
 TABLES = {
-    "raw_posts":  os.environ["DYNAMODB_RAW_POSTS"],
-    "sentiment":  os.environ["DYNAMODB_SENTIMENT"],
-    "trending":   os.environ["DYNAMODB_TRENDING"],
+    "raw_posts": os.environ["DYNAMODB_RAW_POSTS"],
+    "sentiment": os.environ["DYNAMODB_SENTIMENT"],
+    "trending": os.environ["DYNAMODB_TRENDING"],
     "engagement": os.environ["DYNAMODB_ENGAGEMENT"],
-    "authors":    os.environ["DYNAMODB_AUTHORS"],
+    "authors": os.environ["DYNAMODB_AUTHORS"],
 }
 
 
@@ -51,12 +52,15 @@ def get_trending():
         Limit=min(limit, 100),
     )
 
-    return response(200, {
-        "window": window,
-        "topics": result.get("Items", []),
-        "count": result.get("Count", 0),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    })
+    return response(
+        200,
+        {
+            "window": window,
+            "topics": result.get("Items", []),
+            "count": result.get("Count", 0),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
 
 @app.get("/sentiment/<post_id>")
@@ -89,10 +93,13 @@ def get_engagement():
     else:
         result = table.scan(Limit=min(limit, 100))
 
-    return response(200, {
-        "posts": result.get("Items", []),
-        "count": result.get("Count", 0),
-    })
+    return response(
+        200,
+        {
+            "posts": result.get("Items", []),
+            "count": result.get("Count", 0),
+        },
+    )
 
 
 @app.get("/authors/<username>")
@@ -120,11 +127,14 @@ def search_posts():
         FilterExpression=Attr("title").contains(query),
         Limit=min(limit, 100),
     )
-    return response(200, {
-        "query": query,
-        "results": result.get("Items", []),
-        "count": result.get("Count", 0),
-    })
+    return response(
+        200,
+        {
+            "query": query,
+            "results": result.get("Items", []),
+            "count": result.get("Count", 0),
+        },
+    )
 
 
 @logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_REST)

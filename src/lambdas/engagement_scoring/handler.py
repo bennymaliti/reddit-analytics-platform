@@ -3,6 +3,7 @@ Lambda: engagement-scoring
 Trigger: Kinesis raw-posts stream
 Purpose: Calculate composite engagement score for each post
 """
+
 import base64
 import json
 import os
@@ -69,17 +70,19 @@ def lambda_handler(event: dict, context) -> dict:
                 engagement_score = calculate_engagement_score(post)
                 comment_velocity = calculate_comment_velocity(post)
 
-                batch.put_item(Item={
-                    "post_id": post["post_id"],
-                    "scored_at": datetime.now(timezone.utc).isoformat(),
-                    "engagement_score": str(engagement_score),
-                    "upvote_ratio": str(post.get("upvote_ratio", 0)),
-                    "score": post.get("score", 0),
-                    "num_comments": post.get("num_comments", 0),
-                    "num_awards": post.get("num_awards", 0),
-                    "comment_velocity": str(comment_velocity),
-                    "subreddit": post.get("subreddit_id", ""),
-                })
+                batch.put_item(
+                    Item={
+                        "post_id": post["post_id"],
+                        "scored_at": datetime.now(timezone.utc).isoformat(),
+                        "engagement_score": str(engagement_score),
+                        "upvote_ratio": str(post.get("upvote_ratio", 0)),
+                        "score": post.get("score", 0),
+                        "num_comments": post.get("num_comments", 0),
+                        "num_awards": post.get("num_awards", 0),
+                        "comment_velocity": str(comment_velocity),
+                        "subreddit": post.get("subreddit_id", ""),
+                    }
+                )
                 processed += 1
             except Exception as e:
                 logger.error(f"Error scoring post: {e}")

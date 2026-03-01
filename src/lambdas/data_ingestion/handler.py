@@ -3,6 +3,7 @@ Lambda: data-ingestion
 Trigger: EventBridge schedule (every 5 minutes)
 Purpose: Poll Reddit PRAW API and publish raw posts to Kinesis Data Stream
 """
+
 import json
 import os
 import time
@@ -70,7 +71,7 @@ def normalise_post(post, subreddit: str) -> dict:
 def batch_put_kinesis(records: list, stream_name: str) -> dict:
     total_sent, total_failed = 0, 0
     for i in range(0, len(records), 500):
-        batch = records[i:i + 500]
+        batch = records[i : i + 500]
         kinesis_records = [
             {"Data": json.dumps(r).encode("utf-8"), "PartitionKey": r["subreddit_id"]}
             for r in batch
@@ -83,9 +84,12 @@ def batch_put_kinesis(records: list, stream_name: str) -> dict:
 
 def archive_to_s3(posts: list, subreddit: str) -> None:
     import gzip
+
     now = datetime.now(timezone.utc)
-    key = (f"raw/subreddit={subreddit}/year={now.year}/month={now.month:02d}/"
-           f"day={now.day:02d}/hour={now.hour:02d}/{now.strftime('%Y%m%dT%H%M%S')}.json.gz")
+    key = (
+        f"raw/subreddit={subreddit}/year={now.year}/month={now.month:02d}/"
+        f"day={now.day:02d}/hour={now.hour:02d}/{now.strftime('%Y%m%dT%H%M%S')}.json.gz"
+    )
     body = gzip.compress(json.dumps(posts, default=str).encode())
     s3.put_object(Bucket=S3_RAW_BUCKET, Key=key, Body=body, ContentEncoding="gzip")
 
@@ -101,8 +105,10 @@ def lambda_handler(event: dict, context) -> dict:
     for subreddit_name in TARGET_SUBREDDITS:
         subreddit_name = subreddit_name.strip()
         try:
-            posts = [normalise_post(p, subreddit_name)
-                     for p in reddit.subreddit(subreddit_name).new(limit=POST_LIMIT)]
+            posts = [
+                normalise_post(p, subreddit_name)
+                for p in reddit.subreddit(subreddit_name).new(limit=POST_LIMIT)
+            ]
             archive_to_s3(posts, subreddit_name)
             all_records.extend(posts)
             subreddit_counts[subreddit_name] = len(posts)

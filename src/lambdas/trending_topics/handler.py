@@ -3,6 +3,7 @@ Lambda: trending-topics
 Trigger: Kinesis raw-posts stream
 Purpose: Detect trending topics using rolling time windows
 """
+
 import base64
 import json
 import os
@@ -33,15 +34,17 @@ def decode_kinesis_record(record: dict) -> dict:
 def extract_key_phrases(texts: list) -> list:
     all_phrases = []
     for i in range(0, len(texts), 25):
-        batch = texts[i:i + 25]
+        batch = texts[i : i + 25]
         try:
             response = comprehend.batch_detect_key_phrases(
-                TextList=[t[:4900] for t in batch],
-                LanguageCode="en"
+                TextList=[t[:4900] for t in batch], LanguageCode="en"
             )
             for result in response["ResultList"]:
-                phrases = [kp["Text"].lower() for kp in result.get("KeyPhrases", [])
-                           if kp["Score"] > 0.9 and len(kp["Text"]) > 3]
+                phrases = [
+                    kp["Text"].lower()
+                    for kp in result.get("KeyPhrases", [])
+                    if kp["Score"] > 0.9 and len(kp["Text"]) > 3
+                ]
                 all_phrases.extend(phrases)
         except Exception as e:
             logger.error(f"Comprehend key phrase error: {e}")
@@ -83,7 +86,7 @@ def lambda_handler(event: dict, context) -> dict:
                         ":w": window,
                         ":ls": now.isoformat(),
                         ":ttl": get_ttl(window),
-                    }
+                    },
                 )
                 updated += 1
             except Exception as e:
@@ -94,8 +97,9 @@ def lambda_handler(event: dict, context) -> dict:
                 sns.publish(
                     TopicArn=SNS_TRENDING_ARN,
                     Subject=f"Trending spike: {topic}",
-                    Message=json.dumps({"topic": topic, "count": count,
-                                        "timestamp": now.isoformat()}),
+                    Message=json.dumps(
+                        {"topic": topic, "count": count, "timestamp": now.isoformat()}
+                    ),
                 )
             except Exception as e:
                 logger.error(f"SNS publish error: {e}")
