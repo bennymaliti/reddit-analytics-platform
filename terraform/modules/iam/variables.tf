@@ -1,0 +1,10 @@
+variable "name_prefix" { type = string }
+variable "aws_region" { type = string }
+variable "kms_key_arn" { type = string }
+variable "kinesis_raw_stream_arn" { type = string }
+variable "s3_raw_bucket_arn" { type = string }
+variable "s3_artifacts_bucket_arn" { type = string }
+variable "dynamodb_table_arns" { type = list(string) }
+variable "sns_alerts_arn" { type = string }
+variable "sns_trending_arn" { type = string }
+variable "reddit_secret_arn" { type = string }

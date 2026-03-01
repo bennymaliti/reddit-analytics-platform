@@ -1,0 +1,48 @@
+# ─── Terraform ───────────────────────────────────
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.tfplan
+terraform.tfvars        # contains real values — never commit this
+*.auto.tfvars
+
+# ─── AWS Credentials ─────────────────────────────
+.aws/
+credentials
+*.pem
+*.key
+
+# ─── Python ──────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.dist/
+site-packages/
+
+# ─── Lambda Build Artifacts ──────────────────────
+src/lambdas/**/package/
+*.zip
+
+# ─── IDE ─────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ─── OS ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Secrets / Env files ─────────────────────────
+.env
+.env.*
+*.secret
