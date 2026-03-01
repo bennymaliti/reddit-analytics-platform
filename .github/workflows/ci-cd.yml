@@ -50,7 +50,7 @@ jobs:
         run: |
           flake8 src/lambdas/ \
             --max-line-length 100 \
-            --extend-ignore=E501,W503,E203 \
+             \
             --exclude=__pycache__
 
   # -----------------------------------------------

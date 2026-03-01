@@ -70,7 +70,7 @@ def normalise_post(post, subreddit: str) -> dict:
 def batch_put_kinesis(records: list, stream_name: str) -> dict:
     total_sent, total_failed = 0, 0
     for i in range(0, len(records), 500):
-        batch = records[i:i + 500]
+        batch = records[i : i + 500]
         kinesis_records = [
             {"Data": json.dumps(r).encode("utf-8"), "PartitionKey": r["subreddit_id"]}
             for r in batch

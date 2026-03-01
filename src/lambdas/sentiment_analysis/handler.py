@@ -30,7 +30,7 @@ def decode_kinesis_record(record: dict) -> dict:
 def analyse_sentiment_batch(texts: list) -> list:
     results = []
     for i in range(0, len(texts), MAX_BATCH_SIZE):
-        batch = texts[i:i + MAX_BATCH_SIZE]
+        batch = texts[i : i + MAX_BATCH_SIZE]
         response = comprehend.batch_detect_sentiment(
             TextList=[t[:4900] for t in batch], LanguageCode="en"
         )
