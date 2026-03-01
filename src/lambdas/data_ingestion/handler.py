@@ -9,7 +9,6 @@ import os
 import time
 import boto3
 import praw
-import logging
 from datetime import datetime, timezone
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.metrics import MetricUnit
@@ -71,7 +70,7 @@ def normalise_post(post, subreddit: str) -> dict:
 def batch_put_kinesis(records: list, stream_name: str) -> dict:
     total_sent, total_failed = 0, 0
     for i in range(0, len(records), 500):
-        batch = records[i : i + 500]
+        batch = records[i:i + 500]
         kinesis_records = [
             {"Data": json.dumps(r).encode("utf-8"), "PartitionKey": r["subreddit_id"]}
             for r in batch
@@ -120,7 +119,7 @@ def lambda_handler(event: dict, context) -> dict:
     if all_records:
         result = batch_put_kinesis(all_records, RAW_POSTS_STREAM)
         metrics.add_metric(name="PostsIngested", unit=MetricUnit.Count, value=result["sent"])
-        logger.info(f"Published to Kinesis", **result)
+        logger.info("Published to Kinesis %s", result)
 
     return {
         "statusCode": 200,

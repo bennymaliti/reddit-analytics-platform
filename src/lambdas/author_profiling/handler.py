@@ -11,7 +11,6 @@ import boto3
 from datetime import datetime, timezone
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.metrics import MetricUnit
-from boto3.dynamodb.conditions import Key
 
 logger = Logger(service="author-profiling")
 tracer = Tracer(service="author-profiling")

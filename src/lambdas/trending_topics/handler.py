@@ -34,7 +34,7 @@ def decode_kinesis_record(record: dict) -> dict:
 def extract_key_phrases(texts: list) -> list:
     all_phrases = []
     for i in range(0, len(texts), 25):
-        batch = texts[i : i + 25]
+        batch = texts[i:i + 25]
         try:
             response = comprehend.batch_detect_key_phrases(
                 TextList=[t[:4900] for t in batch], LanguageCode="en"
