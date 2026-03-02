@@ -17,7 +17,7 @@ env:
 
 jobs:
   # -----------------------------------------------
-  # JOB 1: Python Lint and Syntax Check
+  # JOB 1: Python Lint, Format and Unit Tests
   # -----------------------------------------------
   python-checks:
     name: Python Checks
@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install black flake8 aws-lambda-powertools boto3
+          pip install -r requirements-dev.txt
 
       - name: Check Python syntax
         run: |
@@ -48,10 +48,11 @@ jobs:
 
       - name: Flake8 lint
         run: |
-          flake8 src/lambdas/ \
-            --max-line-length 100 \
-             \
-            --exclude=__pycache__
+          flake8 src/lambdas/
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v --cov=src/lambdas --cov-report=term-missing
 
   # -----------------------------------------------
   # JOB 2: Terraform Checks
