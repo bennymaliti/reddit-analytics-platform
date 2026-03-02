@@ -1,13 +1,16 @@
 """Unit tests for content classification Lambda"""
-import pytest
-import sys
+import importlib.util
 import os
-os.environ.setdefault("AWS_REGION", "eu-west-2")
-os.environ.setdefault("AWS_DEFAULT_REGION", "eu-west-2")
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/lambdas/content_classification"))
+spec = importlib.util.spec_from_file_location(
+    "classification_handler",
+    os.path.join(os.path.dirname(__file__), "../../src/lambdas/content_classification/handler.py"),
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
 
-from handler import classify_post_type, classify_topic
+classify_post_type = module.classify_post_type
+classify_topic = module.classify_topic
 
 
 def test_classify_text_post():
