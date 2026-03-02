@@ -174,46 +174,4 @@ resource "aws_cloudwatch_metric_alarm" "kinesis_iterator_age" {
   dimensions          = { StreamName = module.kinesis.raw_stream_name }
 }
 
-# --- CloudWatch Dashboard ---
-resource "aws_cloudwatch_dashboard" "main" {
-  dashboard_name = local.name_prefix
-  dashboard_body = jsonencode({
-    widgets = [
-      {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title  = "Lambda Invocations"
-          period = 300
-          stat   = "Sum"
-          view   = "timeSeries"
-          metrics = [
-            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-data_ingestion"],
-            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-data_ingestion"],
-            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-sentiment_analysis"],
-            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-sentiment_analysis"]
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
-        properties = {
-          title  = "Kinesis Iterator Age"
-          period = 60
-          stat   = "Maximum"
-          view   = "timeSeries"
-          metrics = [
-            ["AWS/Kinesis", "GetRecords.IteratorAgeMilliseconds", "StreamName", "${local.name_prefix}-raw-posts"]
-          ]
-        }
-      }
-    ]
-  })
-}
+
