@@ -8,20 +8,11 @@ import os
 import pytest
 import boto3
 from moto import mock_aws
-from unittest.mock import patch, MagicMock
-
-
-@pytest.fixture(autouse=True)
-def aws_credentials():
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
+from unittest.mock import patch
+from conftest import MockLambdaContext
 
 
 def make_kinesis_record(post: dict) -> dict:
-    """Helper to create a mock Kinesis record"""
     return {
         "kinesis": {
             "data": base64.b64encode(json.dumps(post).encode()).decode()
@@ -79,8 +70,7 @@ def test_sentiment_stored_in_dynamodb():
             "ResultList": [mock_sentiment],
             "ErrorList": [],
         }
-
-        result = module.lambda_handler(event, {})
+        result = module.lambda_handler(event, MockLambdaContext())
 
     assert result["processed"] == 1
     assert result["errors"] == 0
@@ -143,7 +133,7 @@ def test_sentiment_handles_multiple_records():
             "ResultList": mock_results,
             "ErrorList": [],
         }
-        result = module.lambda_handler(event, {})
+        result = module.lambda_handler(event, MockLambdaContext())
 
     assert result["processed"] == 3
     assert result["errors"] == 0

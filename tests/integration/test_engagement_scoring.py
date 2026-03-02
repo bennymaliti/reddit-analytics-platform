@@ -9,16 +9,7 @@ import time
 import pytest
 import boto3
 from moto import mock_aws
-from unittest.mock import patch
-
-
-@pytest.fixture(autouse=True)
-def aws_credentials():
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
+from conftest import MockLambdaContext
 
 
 def make_kinesis_record(post: dict) -> dict:
@@ -66,7 +57,7 @@ def test_engagement_score_stored_in_dynamodb():
     }
 
     event = {"Records": [make_kinesis_record(post)]}
-    result = module.lambda_handler(event, {})
+    result = module.lambda_handler(event, MockLambdaContext())
 
     assert result["processed"] == 1
     assert result["errors"] == 0
@@ -119,7 +110,7 @@ def test_low_engagement_post_stored_correctly():
     }
 
     event = {"Records": [make_kinesis_record(post)]}
-    result = module.lambda_handler(event, {})
+    result = module.lambda_handler(event, MockLambdaContext())
 
     assert result["processed"] == 1
     assert result["errors"] == 0
