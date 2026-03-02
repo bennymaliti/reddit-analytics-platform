@@ -1,12 +1,12 @@
-# ═══════════════════════════════════════════════════════════════════
+# ===================================================================
 # Reddit Analytics Platform — Root Terraform Module
-# ═══════════════════════════════════════════════════════════════════
+# ===================================================================
 
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
 
-# ─── KMS Customer Managed Key ───
+# --- KMS Customer Managed Key ---
 resource "aws_kms_key" "main" {
   description             = "CMK for ${local.name_prefix}"
   deletion_window_in_days = 14
@@ -19,7 +19,7 @@ resource "aws_kms_alias" "main" {
   target_key_id = aws_kms_key.main.key_id
 }
 
-# ─── SNS Topics ───
+# --- SNS Topics ---
 resource "aws_sns_topic" "alerts" {
   name              = "${local.name_prefix}-alerts"
   kms_master_key_id = aws_kms_key.main.id
@@ -37,14 +37,14 @@ resource "aws_sns_topic" "trending_spikes" {
   kms_master_key_id = aws_kms_key.main.id
 }
 
-# ─── S3 Buckets ───
+# --- S3 Buckets ---
 module "s3" {
   source      = "./modules/s3"
   name_prefix = local.name_prefix
   kms_key_arn = aws_kms_key.main.arn
 }
 
-# ─── DynamoDB Tables ───
+# --- DynamoDB Tables ---
 module "dynamodb" {
   source             = "./modules/dynamodb"
   name_prefix        = local.name_prefix
@@ -54,7 +54,7 @@ module "dynamodb" {
   trending_ttl_days  = var.dynamodb_trending_ttl_days
 }
 
-# ─── Kinesis Streams ───
+# --- Kinesis Streams ---
 module "kinesis" {
   source                       = "./modules/kinesis"
   name_prefix                  = local.name_prefix
@@ -68,7 +68,7 @@ module "kinesis" {
   firehose_buffer_interval_sec = var.firehose_buffer_interval_sec
 }
 
-# ─── IAM Roles ───
+# --- IAM Roles ---
 module "iam" {
   source                  = "./modules/iam"
   name_prefix             = local.name_prefix
@@ -83,7 +83,7 @@ module "iam" {
   reddit_secret_arn       = "arn:aws:secretsmanager:${var.aws_region}:*:secret:${var.reddit_secret_name}*"
 }
 
-# ─── Lambda Functions ───
+# --- Lambda Functions ---
 module "lambda" {
   source                  = "./modules/lambda"
   name_prefix             = local.name_prefix
@@ -103,7 +103,7 @@ module "lambda" {
   aws_region              = var.aws_region
 }
 
-# ─── EventBridge Schedule ───
+# --- EventBridge Schedule ---
 module "eventbridge" {
   source                = "./modules/eventbridge"
   name_prefix           = local.name_prefix
@@ -112,7 +112,32 @@ module "eventbridge" {
   rate_minutes          = var.ingestion_rate_minutes
 }
 
-# ─── API Gateway + Cognito ───
+# --- API Gateway CloudWatch Account Role ---
+resource "aws_iam_role" "api_gateway_cloudwatch" {
+  name = "${local.name_prefix}-apigw-cloudwatch"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Action    = "sts:AssumeRole"
+        Principal = { Service = "apigateway.amazonaws.com" }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
+  role       = aws_iam_role.api_gateway_cloudwatch.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_api_gateway_account" "main" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
+}
+
+# --- API Gateway + Cognito ---
 module "api_gateway" {
   source                = "./modules/api_gateway"
   name_prefix           = local.name_prefix
@@ -124,7 +149,7 @@ module "api_gateway" {
   aws_region            = var.aws_region
 }
 
-# ─── Glue Catalog + ETL ───
+# --- Glue Catalog + ETL ---
 module "glue" {
   source                   = "./modules/glue"
   name_prefix              = local.name_prefix
@@ -133,7 +158,7 @@ module "glue" {
   kms_key_arn              = aws_kms_key.main.arn
 }
 
-# ─── CloudWatch Alarms ───
+# --- CloudWatch Alarm ---
 resource "aws_cloudwatch_metric_alarm" "kinesis_iterator_age" {
   alarm_name          = "${local.name_prefix}-kinesis-iterator-age"
   comparison_operator = "GreaterThanThreshold"
@@ -149,63 +174,46 @@ resource "aws_cloudwatch_metric_alarm" "kinesis_iterator_age" {
   dimensions          = { StreamName = module.kinesis.raw_stream_name }
 }
 
+# --- CloudWatch Dashboard ---
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = local.name_prefix
   dashboard_body = jsonencode({
     widgets = [
       {
-        type = "metric", x = 0, y = 0, width = 12, height = 6,
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
-          title  = "Lambda Invocations & Errors"
+          title  = "Lambda Invocations"
           period = 300
           stat   = "Sum"
+          view   = "timeSeries"
           metrics = [
-            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-data-ingestion"],
-            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-data-ingestion"],
-            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-sentiment-analysis"],
-            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-sentiment-analysis"],
+            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-data_ingestion"],
+            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-data_ingestion"],
+            ["AWS/Lambda", "Invocations", "FunctionName", "${local.name_prefix}-sentiment_analysis"],
+            ["AWS/Lambda", "Errors", "FunctionName", "${local.name_prefix}-sentiment_analysis"]
           ]
         }
       },
       {
-        type = "metric", x = 12, y = 0, width = 12, height = 6,
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
           title  = "Kinesis Iterator Age"
           period = 60
           stat   = "Maximum"
+          view   = "timeSeries"
           metrics = [
-            ["AWS/Kinesis", "GetRecords.IteratorAgeMilliseconds",
-            "StreamName", "${local.name_prefix}-raw-posts"]
+            ["AWS/Kinesis", "GetRecords.IteratorAgeMilliseconds", "StreamName", "${local.name_prefix}-raw-posts"]
           ]
         }
       }
     ]
   })
-}
-
-# --- API Gateway Account CloudWatch Logs Role ---
-resource "aws_iam_role" "api_gateway_cloudwatch" {
-  name = "${local.name_prefix}-apigw-cloudwatch"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
-        Principal = {
-          Service = "apigateway.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
-  role       = aws_iam_role.api_gateway_cloudwatch.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
-}
-
-resource "aws_api_gateway_account" "main" {
-  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
 }
