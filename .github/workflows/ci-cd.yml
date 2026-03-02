@@ -33,8 +33,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Check Python syntax
         run: |
@@ -43,19 +42,42 @@ jobs:
           done
 
       - name: Black formatting check
-        run: |
-          black src/lambdas/ --check --line-length 100
+        run: black src/lambdas/ --check --line-length 100
 
       - name: Flake8 lint
-        run: |
-          flake8 src/lambdas/
+        run: flake8 src/lambdas/
 
       - name: Run unit tests
-        run: |
-          pytest tests/unit/ -v --cov=src/lambdas --cov-report=term-missing
+        run: pytest tests/unit/ -v --cov=src/lambdas --cov-report=term-missing
 
   # -----------------------------------------------
-  # JOB 2: Terraform Checks
+  # JOB 2: Integration Tests
+  # -----------------------------------------------
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v --cov=src/lambdas --cov-report=term-missing
+        env:
+          AWS_DEFAULT_REGION: eu-west-2
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+
+  # -----------------------------------------------
+  # JOB 3: Terraform Checks
   # -----------------------------------------------
   terraform-checks:
     name: Terraform Checks
@@ -86,12 +108,12 @@ jobs:
           terraform validate
 
   # -----------------------------------------------
-  # JOB 3: Terraform Plan (pull requests only)
+  # JOB 4: Terraform Plan (pull requests only)
   # -----------------------------------------------
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
-    needs: [python-checks, terraform-checks]
+    needs: [python-checks, integration-tests, terraform-checks]
     if: github.event_name == 'pull_request'
 
     permissions:
@@ -151,12 +173,12 @@ jobs:
             })
 
   # -----------------------------------------------
-  # JOB 4: Terraform Apply (main branch only)
+  # JOB 5: Terraform Apply (main branch only)
   # -----------------------------------------------
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: [python-checks, terraform-checks]
+    needs: [python-checks, integration-tests, terraform-checks]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     environment: production
