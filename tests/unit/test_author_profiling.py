@@ -2,6 +2,8 @@
 import pytest
 import sys
 import os
+os.environ.setdefault("AWS_REGION", "eu-west-2")
+os.environ.setdefault("AWS_DEFAULT_REGION", "eu-west-2")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/lambdas/author_profiling"))
 
