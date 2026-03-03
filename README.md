@@ -160,3 +160,33 @@ reddit-analytics-platform/
 ## License
 
 MIT License — see [LICENSE](LICENSE)
+
+## Local Development
+
+Requires Docker Desktop running.
+
+### Start local AWS environment
+```bash
+./scripts/local_dev.sh start
+```
+
+### Check resources created
+```bash
+./scripts/local_dev.sh status
+```
+
+### Invoke a Lambda locally
+```bash
+./scripts/local_dev.sh invoke data_ingestion
+./scripts/local_dev.sh invoke sentiment_analysis
+```
+
+### Scan a DynamoDB table
+```bash
+./scripts/local_dev.sh scan reddit-analytics-local-raw-posts
+```
+
+### Stop local environment
+```bash
+./scripts/local_dev.sh stop
+```
