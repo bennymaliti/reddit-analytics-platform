@@ -3,6 +3,7 @@ Lambda: engagement-scoring
 Trigger: Kinesis raw-posts stream
 Purpose: Calculate composite engagement score for each post
 """
+
 import base64
 import json
 import os
