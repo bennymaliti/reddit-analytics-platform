@@ -1,4 +1,12 @@
-# í´– Reddit Social Media Analytics Platform
+#  Reddit Social Media Analytics Platform
+[![CI/CD Pipeline](https://github.com/bennymaliti/reddit-analytics-platform/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/bennymaliti/reddit-analytics-platform/actions/workflows/ci-cd.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.0-7B42BC.svg)](https://www.terraform.io/)
+[![AWS](https://img.shields.io/badge/AWS-eu--west--2-FF9900.svg?logo=amazon-aws)](https://aws.amazon.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 
 > A production-grade, serverless microservices architecture on AWS for real-time Reddit data ingestion, sentiment analysis, trending topic detection, and engagement scoring.
 
