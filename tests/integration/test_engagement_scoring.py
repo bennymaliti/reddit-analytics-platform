@@ -9,7 +9,7 @@ import time
 import pytest
 import boto3
 from moto import mock_aws
-from conftest import MockLambdaContext
+from tests.helpers import MockLambdaContext
 
 
 def make_kinesis_record(post: dict) -> dict:
