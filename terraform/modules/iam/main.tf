@@ -71,8 +71,12 @@ resource "aws_iam_role_policy" "ingestion" {
         Resource = [var.reddit_secret_arn]
       },
       {
-        Effect   = "Allow"
-        Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem"]
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem"
+        ]
         Resource = var.dynamodb_table_arns
       },
     ]
@@ -120,7 +124,8 @@ resource "aws_iam_role_policy" "sentiment" {
         Action = [
           "comprehend:DetectSentiment",
           "comprehend:BatchDetectSentiment",
-          "comprehend:DetectKeyPhrases"
+          "comprehend:DetectKeyPhrases",
+          "comprehend:BatchDetectKeyPhrases"
         ]
         Resource = ["*"]
       },
@@ -161,13 +166,19 @@ resource "aws_iam_role_policy" "trending" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:GetItem",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = var.dynamodb_table_arns
       },
       {
-        Effect   = "Allow"
-        Action   = ["comprehend:DetectKeyPhrases", "comprehend:DetectEntities"]
+        Effect = "Allow"
+        Action = [
+          "comprehend:DetectKeyPhrases",
+          "comprehend:BatchDetectKeyPhrases",
+          "comprehend:DetectEntities",
+          "comprehend:BatchDetectEntities"
+        ]
         Resource = ["*"]
       },
       {
@@ -215,13 +226,19 @@ resource "aws_iam_role_policy" "consumer" {
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:GetItem",
-          "dynamodb:Query"
+          "dynamodb:Query",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = var.dynamodb_table_arns
       },
       {
-        Effect   = "Allow"
-        Action   = ["comprehend:DetectEntities", "comprehend:DetectKeyPhrases"]
+        Effect = "Allow"
+        Action = [
+          "comprehend:DetectEntities",
+          "comprehend:BatchDetectEntities",
+          "comprehend:DetectKeyPhrases",
+          "comprehend:BatchDetectKeyPhrases"
+        ]
         Resource = ["*"]
       },
     ]

@@ -46,3 +46,7 @@ Thumbs.db
 .env
 .env.*
 *.secret
+# LocalStack
+.localstack/
+localstack_data/
+docker-compose.override.yml

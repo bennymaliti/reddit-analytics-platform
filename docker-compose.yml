@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: reddit-analytics-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=lambda,kinesis,dynamodb,s3,secretsmanager,sns,sqs,iam,logs
+      - DEBUG=0
+      - AWS_DEFAULT_REGION=eu-west-2
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./scripts/localstack:/etc/localstack/init/ready.d"
+      - localstack_data:/var/lib/localstack
+
+  lambda-builder:
+    image: python:3.12-slim
+    container_name: reddit-analytics-builder
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      bash -c "
+        pip install -r requirements-dev.txt --quiet &&
+        echo 'Dependencies installed successfully'
+      "
+
+volumes:
+  localstack_data:
