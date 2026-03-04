@@ -7,6 +7,31 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
+## Architecture
+
+
+> View the interactive diagram: [architecture.html](architecture.html)
+
+The platform is an event-driven serverless pipeline across 7 Lambda microservices:
+
+```
+EventBridge → data_ingestion → Kinesis Data Streams
+                                        ↓ (fan-out)
+              ┌─────────────────────────────────────────┐
+              │ sentiment_analysis  → DynamoDB           │
+              │ engagement_scoring  → DynamoDB           │
+              │ trending_topics     → DynamoDB           │
+              │ content_classification → DynamoDB        │
+              │ author_profiling    → DynamoDB           │
+              └─────────────────────────────────────────┘
+                                        ↓
+              api_handler ← API Gateway + Cognito JWT
+                                        ↓
+              Kinesis Firehose → S3 Parquet → Glue → Athena
+```
+
+
+
 
 > A production-grade, serverless microservices architecture on AWS for real-time Reddit data ingestion, sentiment analysis, trending topic detection, and engagement scoring.
 
@@ -197,4 +222,59 @@ Requires Docker Desktop running.
 ### Stop local environment
 ```bash
 ./scripts/local_dev.sh stop
+```
+
+
+## Cost Estimate
+
+Estimated monthly AWS cost for this project at low/moderate usage:
+
+| Service | Usage | Est. Monthly Cost |
+|---|---|---|
+| Lambda | 7 functions × 1,000 invocations/day | ~$0.00 (free tier) |
+| Kinesis Data Streams | 1 shard | ~$0.36 |
+| DynamoDB | 5 tables, on-demand, ~10K writes/day | ~$0.25 |
+| S3 | ~1 GB storage + requests | ~$0.03 |
+| API Gateway | ~1,000 requests/day | ~$0.00 (free tier) |
+| Amazon Comprehend | ~10K units/day | ~$0.50 |
+| CloudWatch | Logs + dashboards | ~$0.50 |
+| Kinesis Firehose | ~100MB/day | ~$0.02 |
+| **Total** | | **~$1.66/month** |
+
+> Costs are negligible at portfolio/demo scale. Lambda, API Gateway, and DynamoDB all have generous free tiers.
+> Estimate generated using [AWS Pricing Calculator](https://calculator.aws).
+
+
+## API Endpoints
+
+Base URL: `https://k4hf8nzxoi.execute-api.eu-west-2.amazonaws.com/prod`
+
+All endpoints require a Cognito JWT token in the Authorization header.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /health | Service health check |
+| GET | /posts | List ingested posts |
+| GET | /sentiment | List sentiment analysis results |
+| GET | /sentiment/{post_id} | Get sentiment for a specific post |
+| GET | /trending | Get trending topics (default: 24h window) |
+| GET | /engagement | Get engagement scores |
+| GET | /authors | List author profiles |
+| GET | /authors/{username} | Get profile for a specific author |
+| POST | /search | Search posts by keyword |
+
+### Quick Test
+
+```bash
+# 1. Get a token
+TOKEN=$(aws cognito-idp initiate-auth   --auth-flow USER_PASSWORD_AUTH   --client-id 18g17sp2pr934o37edkn80ijp   --region eu-west-2   --query "AuthenticationResult.IdToken"   --output text)
+
+BASE="https://k4hf8nzxoi.execute-api.eu-west-2.amazonaws.com/prod"
+
+# 2. Test endpoints
+curl -s "$BASE/health"     -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+curl -s "$BASE/trending"   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+curl -s "$BASE/engagement" -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+curl -s "$BASE/sentiment"  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+curl -s "$BASE/authors"    -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ```

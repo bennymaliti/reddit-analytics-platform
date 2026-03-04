@@ -39,6 +39,81 @@ def response(status_code: int, body: dict) -> dict:
     }
 
 
+@app.get("/health")
+def health():
+    return response(
+        200,
+        {
+            "status": "healthy",
+            "service": "reddit-analytics-api",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "tables": list(TABLES.values()),
+        },
+    )
+
+
+@app.get("/posts")
+def get_posts():
+    limit = int(app.current_event.get_query_string_value("limit", "20"))
+    subreddit = app.current_event.get_query_string_value("subreddit", None)
+    table = dynamodb.Table(TABLES["raw_posts"])
+
+    if subreddit:
+        result = table.scan(
+            FilterExpression=Attr("subreddit").eq(subreddit),
+            Limit=min(limit, 100),
+        )
+    else:
+        result = table.scan(Limit=min(limit, 100))
+
+    return response(
+        200,
+        {
+            "posts": result.get("Items", []),
+            "count": result.get("Count", 0),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+
+@app.get("/sentiment")
+def get_sentiment_list():
+    limit = int(app.current_event.get_query_string_value("limit", "20"))
+    sentiment_filter = app.current_event.get_query_string_value("sentiment", None)
+    table = dynamodb.Table(TABLES["sentiment"])
+
+    if sentiment_filter:
+        result = table.scan(
+            FilterExpression=Attr("overall_sentiment").eq(sentiment_filter.upper()),
+            Limit=min(limit, 100),
+        )
+    else:
+        result = table.scan(Limit=min(limit, 100))
+
+    return response(
+        200,
+        {
+            "results": result.get("Items", []),
+            "count": result.get("Count", 0),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+
+@app.get("/sentiment/<post_id>")
+def get_sentiment(post_id: str):
+    table = dynamodb.Table(TABLES["sentiment"])
+    result = table.query(
+        KeyConditionExpression=Key("post_id").eq(post_id),
+        ScanIndexForward=False,
+        Limit=1,
+    )
+    items = result.get("Items", [])
+    if not items:
+        return response(404, {"error": f"No sentiment data found for post {post_id}"})
+    return response(200, items[0])
+
+
 @app.get("/trending")
 def get_trending():
     window = app.current_event.get_query_string_value("window", "24h")
@@ -61,20 +136,6 @@ def get_trending():
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     )
-
-
-@app.get("/sentiment/<post_id>")
-def get_sentiment(post_id: str):
-    table = dynamodb.Table(TABLES["sentiment"])
-    result = table.query(
-        KeyConditionExpression=Key("post_id").eq(post_id),
-        ScanIndexForward=False,
-        Limit=1,
-    )
-    items = result.get("Items", [])
-    if not items:
-        return response(404, {"error": f"No sentiment data found for post {post_id}"})
-    return response(200, items[0])
 
 
 @app.get("/engagement")
@@ -114,6 +175,21 @@ def get_author(username: str):
     if not items:
         return response(404, {"error": f"No profile found for author {username}"})
     return response(200, {"author": username, "history": items})
+
+
+@app.get("/authors")
+def get_authors():
+    limit = int(app.current_event.get_query_string_value("limit", "20"))
+    table = dynamodb.Table(TABLES["authors"])
+    result = table.scan(Limit=min(limit, 100))
+    return response(
+        200,
+        {
+            "authors": result.get("Items", []),
+            "count": result.get("Count", 0),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
 
 @app.post("/search")
